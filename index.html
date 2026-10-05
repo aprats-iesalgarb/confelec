@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuració Electrònica - Diagrama de Moeller (3r/4t ESO)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        
+        /* Grid del diagrama de Moeller */
+        .moeller-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(75px, 1fr));
+            gap: 1.25rem 1rem;
+            position: relative;
+        }
+
+        /* SVG overlay per a les fletxes diagonals */
+        .moeller-svg-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .subshell-card {
+            position: relative;
+            z-index: 2;
+            transition: all 0.2s ease;
+        }
+
+        .subshell-card:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Indicador de subnivell actiu/completat */
+        .status-badge {
+            font-size: 0.65rem;
+            line-height: 1rem;
+        }
+
+        /* Amaga les fletxes dels inputs number */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col justify-between">
+
+    <!-- Header principal -->
+    <header class="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-900 text-white shadow-lg py-5 px-4">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight">Configuració Electrònica</h1>
+                <p class="text-blue-200 text-sm mt-1">Pràctica interactiva amb el Diagrama de Moeller • 3r i 4t d'ESO</p>
+            </div>
+            <div class="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl border border-white/20">
+                <span class="text-xs uppercase tracking-wider font-semibold text-blue-200">Nivell educatiu:</span>
+                <span class="text-sm font-bold bg-blue-500/40 text-white px-2.5 py-1 rounded-lg">3r / 4t ESO</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contingut principal -->
+    <main class="max-w-6xl mx-auto p-4 md:p-6 w-full flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Columna Esquerra: Àtom de treball i Controlde configuració -->
+        <section class="lg:col-span-4 flex flex-col gap-5">
+            
+            <!-- Targeta de l'Element Seleccionat -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 relative overflow-hidden">
+                <div class="absolute top-0 right-0 bg-blue-50 text-blue-600 font-bold text-xs px-3 py-1 rounded-bl-xl uppercase tracking-wider border-b border-l border-blue-100">
+                    Element Requerit
+                </div>
+                
+                <div class="flex items-center gap-5 mt-2">
+                    <div id="atom-symbol-box" class="w-20 h-20 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-2xl flex flex-col items-center justify-center text-white shadow-md transition-all duration-300">
+                        <span id="atom-z-display" class="text-xs font-semibold opacity-80 self-start pl-3 -mb-1">Z = 1</span>
+                        <span id="atom-symbol" class="text-3xl font-extrabold tracking-wider">H</span>
+                    </div>
+                    <div>
+                        <h2 id="atom-name" class="text-2xl font-bold text-slate-800">Hidrogen</h2>
+                        <p class="text-sm text-slate-500 mt-0.5">Nombre d'electrons ($e^-$): <span id="atom-electrons" class="font-bold text-blue-600 text-base">1</span></p>
+                    </div>
+                </div>
+
+                <!-- Botons de selecció d'àtom -->
+                <div class="mt-6 pt-5 border-t border-slate-100 flex flex-col gap-2.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Generar element:</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="generateRandomAtom('easy')" class="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-xl border border-emerald-200/60 transition-colors flex items-center justify-center gap-1.5">
+                            ⚡ Fàcil (Z: 1-18)
+                        </button>
+                        <button onclick="generateRandomAtom('medium')" class="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-xl border border-blue-200/60 transition-colors flex items-center justify-center gap-1.5">
+                            ⚛️ Mitjà (Z: 19-36)
+                        </button>
+                    </div>
+                    <button onclick="generateRandomAtom('hard')" class="w-full py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-semibold rounded-xl border border-purple-200/60 transition-colors flex items-center justify-center gap-1">
+                        🌟 Avançat (Z: 37-54)
+                    </button>
+                    
+                    <div class="mt-2 flex items-center gap-2">
+                        <span class="text-xs text-slate-500">O tria per Z:</span>
+                        <input type="number" id="custom-z-input" min="1" max="54" placeholder="Z" class="w-16 px-2.5 py-1 text-sm border border-slate-300 rounded-lg text-center font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <button onclick="setCustomAtom()" class="px-3 py-1 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg transition-colors">
+                            Carrega
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resum en Notació Espectroscòpica -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Notació Espectroscòpica en temps real</h3>
+                <div id="spectroscopic-notation" class="p-3.5 bg-slate-900 text-emerald-400 font-mono text-sm rounded-xl min-h-[60px] flex items-center flex-wrap gap-1 border border-slate-800 break-all leading-relaxed">
+                    <!-- Es construeix dinàmicament -->
+                </div>
+                <div class="mt-3 flex justify-between items-center text-xs text-slate-500">
+                    <span>Electrons col·locats: <strong id="placed-electrons-count" class="text-slate-800 font-bold">0</strong> / <span id="total-electrons-target">1</span></span>
+                    <span id="status-indicator" class="font-semibold text-amber-600">Pendent</span>
+                </div>
+            </div>
+
+            <!-- Accions i Control -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex flex-col gap-3">
+                <button onclick="checkConfiguration()" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    Comprova la configuració
+                </button>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="showSolution()" class="py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-sm rounded-xl border border-indigo-200/70 transition-colors flex items-center justify-center gap-1.5">
+                        💡 Mostrar Solució
+                    </button>
+                    <button onclick="resetDiagram()" class="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm rounded-xl transition-colors flex items-center justify-center gap-1.5">
+                        🔄 Netejar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Missatges de Feedback -->
+            <div id="feedback-card" class="hidden rounded-2xl p-4 border text-sm flex items-start gap-3">
+                <div id="feedback-icon" class="text-xl shrink-0"></div>
+                <div id="feedback-text" class="leading-relaxed"></div>
+            </div>
+
+        </section>
+
+        <!-- Columna Dreta: Diagrama de Moeller Interactiu -->
+        <section class="lg:col-span-8 bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-slate-200 flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800">Diagrama de Moeller</h2>
+                        <p class="text-xs text-slate-500">Omple les caselles seguint l'ordre de les fletxes diagonals.</p>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs">
+                        <span class="inline-block w-3 h-3 rounded-full bg-blue-500"></span>
+                        <span class="text-slate-600 font-medium">Subnivells ($s, p, d, f$)</span>
+                    </div>
+                </div>
+
+                <!-- Contenidor Relatiu de la Graella amb les Fletxes SVG -->
+                <div class="relative overflow-x-auto py-2">
+                    <div id="moeller-container" class="moeller-grid min-w-[340px] mx-auto">
+                        
+                        <!-- SVG Layer per dibuixar les fletxes de Moeller -->
+                        <svg id="moeller-svg" class="moeller-svg-layer">
+                            <defs>
+                                <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#cbd5e1" />
+                                </marker>
+                                <marker id="arrow-active" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b82f6" />
+                                </marker>
+                            </defs>
+                            <!-- Les línies diagonals de Moeller es generen/actualitzen dinàmicament -->
+                        </svg>
+
+                        <!-- Es generen dinàmicament les 19 caselles dels subnivells -->
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Guia didàctica inferior -->
+            <div class="mt-6 pt-4 border-t border-slate-100 bg-slate-50/70 rounded-xl p-3 text-xs text-slate-600 flex items-start gap-2.5">
+                <span class="text-base">💡</span>
+                <p><strong>Com funciona?</strong> Cada subnivell té una capacitat màxima d'electrons: <span class="font-bold text-blue-700">s = 2</span>, <span class="font-bold text-indigo-700">p = 6</span>, <span class="font-bold text-purple-700">d = 10</span>, i <span class="font-bold text-pink-700">f = 14</span>. Utilitza els botons <strong class="text-slate-800">+</strong> i <strong class="text-slate-800">-</strong> o escriu el nombre directament.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-400 text-center py-4 text-xs border-t border-slate-800 mt-6">
+        <p>Recurs educatiu per a Física i Química de 3r i 4t d'ESO • Adaptat per a GitHub Pages</p>
+    </footer>
+
+    <script>
+        // Taula d'elements químics (Z=1 fins a Z=54)
+        const ELEMENTS = [
+            { z: 1, name: "Hidrogen", symbol: "H" },
+            { z: 2, name: "Heli", symbol: "He" },
+            { z: 3, name: "Liti", symbol: "Li" },
+            { z: 4, name: "Beril·li", symbol: "Be" },
+            { z: 5, name: "Bor", symbol: "B" },
+            { z: 6, name: "Carboni", symbol: "C" },
+            { z: 7, name: "Nitrogen", symbol: "N" },
+            { z: 8, name: "Oxigen", symbol: "O" },
+            { z: 9, name: "Fluor", symbol: "F" },
+            { z: 10, name: "Neó", symbol: "Ne" },
+            { z: 11, name: "Sodi", symbol: "Na" },
+            { z: 12, name: "Magnesi", symbol: "Mg" },
+            { z: 13, name: "Alumini", symbol: "Al" },
+            { z: 14, name: "Silici", symbol: "Si" },
+            { z: 15, name: "Fòsfor", symbol: "P" },
+            { z: 16, name: "Sofre", symbol: "S" },
+            { z: 17, name: "Clor", symbol: "Cl" },
+            { z: 18, name: "Argó", symbol: "Ar" },
+            { z: 19, name: "Potassi", symbol: "K" },
+            { z: 20, name: "Calci", symbol: "Ca" },
+            { z: 21, name: "Escandi", symbol: "Sc" },
+            { z: 22, name: "Titani", symbol: "Ti" },
+            { z: 23, name: "Vanadi", symbol: "V" },
+            { z: 24, name: "Crom", symbol: "Cr" },
+            { z: 25, name: "Manganès", symbol: "Mn" },
+            { z: 26, name: "Ferro", symbol: "Fe" },
+            { z: 27, name: "Cobalt", symbol: "Co" },
+            { z: 28, name: "Níquel", symbol: "Ni" },
+            { z: 29, name: "Cobre", symbol: "Cu" },
+            { z: 30, name: "Zinc", symbol: "Zn" },
+            { z: 31, name: "Gal·li", symbol: "Ga" },
+            { z: 32, name: "Germani", symbol: "Ge" },
+            { z: 33, name: "Arsènic", symbol: "As" },
+            { z: 34, name: "Seleni", symbol: "Se" },
+            { z: 35, name: "Brom", symbol: "Br" },
+            { z: 36, name: "Kriptó", symbol: "Kr" },
+            { z: 37, name: "Rubidi", symbol: "Rb" },
+            { z: 38, name: "Estronci", symbol: "Sr" },
+            { z: 39, name: "Itri", symbol: "Y" },
+            { z: 40, name: "Zirconi", symbol: "Zr" },
+            { z: 41, name: "Niobi", symbol: "Nb" },
+            { z: 42, name: "Molibdè", symbol: "Mo" },
+            { z: 43, name: "Tecneci", symbol: "Tc" },
+            { z: 44, name: "Ruteni", symbol: "Ru" },
+            { z: 45, name: "Rodi", symbol: "Rh" },
+            { z: 46, name: "Pal·ladi", symbol: "Pd" },
+            { z: 47, name: "Plata", symbol: "Ag" },
+            { z: 48, name: "Cadmi", symbol: "Cd" },
+            { z: 49, name: "Indi", symbol: "In" },
+            { z: 50, name: "Stannum (Llaó)", symbol: "Sn" },
+            { z: 51, name: "Antimoni", symbol: "Sb" },
+            { z: 52, name: "Tel·luri", symbol: "Te" },
+            { z: 53, name: "Iode", symbol: "I" },
+            { z: 54, name: "Xenó", symbol: "Xe" }
+        ];
+
+        // Definició dels subnivells segons l'ordre exacte de Moeller
+        // row (1-7), col (0:s, 1:p, 2:d, 3:f)
+        const SUBSHELLS = [
+            { id: "1s", name: "1s", max: 2, row: 1, col: 0, order: 1 },
+            { id: "2s", name: "2s", max: 2, row: 2, col: 0, order: 2 },
+            { id: "2p", name: "2p", max: 6, row: 2, col: 1, order: 3 },
+            { id: "3s", name: "3s", max: 2, row: 3, col: 0, order: 4 },
+            { id: "3p", name: "3p", max: 6, row: 3, col: 1, order: 5 },
+            { id: "4s", name: "4s", max: 2, row: 4, col: 0, order: 6 },
+            { id: "3d", name: "3d", max: 10, row: 3, col: 2, order: 7 },
+            { id: "4p", name: "4p", max: 6, row: 4, col: 1, order: 8 },
+            { id: "5s", name: "5s", max: 2, row: 5, col: 0, order: 9 },
+            { id: "4d", name: "4d", max: 10, row: 4, col: 2, order: 10 },
+            { id: "5p", name: "5p", max: 6, row: 5, col: 1, order: 11 },
+            { id: "6s", name: "6s", max: 2, row: 6, col: 0, order: 12 },
+            { id: "4f", name: "4f", max: 14, row: 4, col: 3, order: 13 },
+            { id: "5d", name: "5d", max: 10, row: 5, col: 2, order: 14 },
+            { id: "6p", name: "6p", max: 6, row: 6, col: 1, order: 15 },
+            { id: "7s", name: "7s", max: 2, row: 7, col: 0, order: 16 },
+            { id: "5f", name: "5f", max: 14, row: 5, col: 3, order: 17 },
+            { id: "6d", name: "6d", max: 10, row: 6, col: 2, order: 18 },
+            { id: "7p", name: "7p", max: 6, row: 7, col: 1, order: 19 }
+        ];
+
+        // Ordre de les diagonals de Moeller per dibuixar les fletxes visuals
+        const MOELLER_DIAGONALS = [
+            ["1s"],
+            ["2s"],
+            ["2p", "3s"],
+            ["3p", "4s"],
+            ["3d", "4p", "5s"],
+            ["4d", "5p", "6s"],
+            ["4f", "5d", "6p", "7s"],
+            ["5f", "6d", "7p"]
+        ];
+
+        // Estat global de l'aplicació
+        let currentAtom = ELEMENTS[0]; // Hidrogen per defecte
+        let userConfiguration = {}; // Guardar els valors entrats per l'alumne: { "1s": 2, "2s": 1 ... }
+
+        window.onload = function() {
+            renderMoellerGrid();
+            selectAtom(1);
+            
+            // Re-dibuixar línies SVG en canviar la mida de la finestra
+            window.addEventListener('resize', drawMoellerArrows);
+        };
+
+        // Renderitza la graella de Moeller amb els subnivells
+        function renderMoellerGrid() {
+            const container = document.getElementById('moeller-container');
+            
+            // Neteja contingut previ (mantenint l'SVG)
+            const svg = document.getElementById('moeller-svg');
+            container.innerHTML = '';
+            container.appendChild(svg);
+
+            // Matriu de 7 files per 4 columnes
+            for (let r = 1; r <= 7; r++) {
+                for (let c = 0; c < 4; c++) {
+                    const subshell = SUBSHELLS.find(s => s.row === r && s.col === c);
+                    
+                    if (subshell) {
+                        const card = document.createElement('div');
+                        card.id = `card-${subshell.id}`;
+                        card.className = "subshell-card bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 flex flex-col items-center justify-between shadow-xs";
+                        card.setAttribute('data-id', subshell.id);
+
+                        // Determinar color de capçalera segons el tipus (s, p, d, f)
+                        let typeColor = "text-blue-600 bg-blue-50 border-blue-200";
+                        if (subshell.col === 1) typeColor = "text-indigo-600 bg-indigo-50 border-indigo-200";
+                        if (subshell.col === 2) typeColor = "text-purple-600 bg-purple-50 border-purple-200";
+                        if (subshell.col === 3) typeColor = "text-pink-600 bg-pink-50 border-pink-200";
+
+                        card.innerHTML = `
+                            <div class="flex items-center justify-between w-full mb-1">
+                                <span class="font-bold text-sm text-slate-800">${subshell.name}</span>
+                                <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${typeColor}">
+                                    màx ${subshell.max}
+                                </span>
+                            </div>
+                            
+                            <!-- Camp d'entrada numèric amb controls + i - -->
+                            <div class="flex items-center justify-center my-1 w-full gap-1">
+                                <button onclick="changeElectrons('${subshell.id}', -1)" class="w-6 h-6 flex items-center justify-center bg-slate-200 hover:bg-slate-300 active:bg-slate-400 text-slate-700 font-bold rounded-lg transition-colors text-xs select-none">-</button>
+                                
+                                <input type="number" id="input-${subshell.id}" min="0" max="${subshell.max}" value="0"
+                                    oninput="onInputChange('${subshell.id}')"
+                                    class="w-10 h-8 text-center font-bold text-base bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                
+                                <button onclick="changeElectrons('${subshell.id}', 1)" class="w-6 h-6 flex items-center justify-center bg-slate-200 hover:bg-slate-300 active:bg-slate-400 text-slate-700 font-bold rounded-lg transition-colors text-xs select-none">+</button>
+                            </div>
+
+                            <button onclick="fillSubshell('${subshell.id}')" class="text-[10px] text-slate-500 hover:text-blue-600 font-medium underline mt-0.5">
+                                Omplir (${subshell.max})
+                            </button>
+                        `;
+                        container.appendChild(card);
+                        userConfiguration[subshell.id] = 0;
+                    } else {
+                        // Espai buit per mantenir la graella
+                        const emptyDiv = document.createElement('div');
+                        emptyDiv.className = "opacity-0 pointer-events-none";
+                        container.appendChild(emptyDiv);
+                    }
+                }
+            }
+
+            // Dibuixa les fletxes visuals de Moeller després de dibuixar les caselles
+            setTimeout(drawMoellerArrows, 100);
+        }
+
+        // Dibuixa fletxes diagonals connectant els subnivells segons les diagonals de Moeller
+        function drawMoellerArrows() {
+            const svg = document.getElementById('moeller-svg');
+            if (!svg) return;
+
+            // Netejar línies anteriors
+            const existingLines = svg.querySelectorAll('.moeller-arrow-line');
+            existingLines.forEach(l => l.remove());
+
+            const container = document.getElementById('moeller-container');
+            const containerRect = container.getBoundingClientRect();
+
+            MOELLER_DIAGONALS.forEach(diagonal => {
+                if (diagonal.length === 0) return;
+
+                const firstCard = document.getElementById(`card-${diagonal[0]}`);
+                const lastCard = document.getElementById(`card-${diagonal[diagonal.length - 1]}`);
+
+                if (!firstCard || !lastCard) return;
+
+                const firstRect = firstCard.getBoundingClientRect();
+                const lastRect = lastCard.getBoundingClientRect();
+
+                // Punts relatius dins el contenidor SVG
+                const startX = (firstRect.left + firstRect.width / 2) - containerRect.left + 25;
+                const startY = (firstRect.top) - containerRect.top - 12;
+                
+                const endX = (lastRect.left + lastRect.width / 2) - containerRect.left - 25;
+                const endY = (lastRect.bottom) - containerRect.top + 12;
+
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', startX);
+                line.setAttribute('y1', startY);
+                line.setAttribute('x2', endX);
+                line.setAttribute('y2', endY);
+                line.setAttribute('stroke', '#cbd5e1');
+                line.setAttribute('stroke-width', '2.5');
+                line.setAttribute('stroke-dasharray', '4,4');
+                line.setAttribute('marker-end', 'url(#arrow)');
+                line.setAttribute('class', 'moeller-arrow-line');
+
+                svg.appendChild(line);
+            });
+        }
+
+        // Canvia el nombre d'electrons d'un subnivell
+        function changeElectrons(subshellId, delta) {
+            const subshell = SUBSHELLS.find(s => s.id === subshellId);
+            if (!subshell) return;
+
+            let currentVal = parseInt(userConfiguration[subshellId] || 0);
+            let newVal = currentVal + delta;
+
+            if (newVal < 0) newVal = 0;
+            if (newVal > subshell.max) newVal = subshell.max;
+
+            updateSubshellValue(subshellId, newVal);
+        }
+
+        // Acció de botó directe "Omplir"
+        function fillSubshell(subshellId) {
+            const subshell = SUBSHELLS.find(s => s.id === subshellId);
+            if (subshell) {
+                updateSubshellValue(subshellId, subshell.max);
+            }
+        }
+
+        // Es dispara quan l'alumne escriu al camp numèric
+        function onInputChange(subshellId) {
+            const subshell = SUBSHELLS.find(s => s.id === subshellId);
+            const input = document.getElementById(`input-${subshellId}`);
+            let val = parseInt(input.value) || 0;
+
+            if (val < 0) val = 0;
+            if (val > subshell.max) val = subshell.max;
+
+            updateSubshellValue(subshellId, val);
+        }
+
+        // Actualitza l'estat global i la interfície
+        function updateSubshellValue(subshellId, val) {
+            userConfiguration[subshellId] = val;
+            const input = document.getElementById(`input-${subshellId}`);
+            if (input) input.value = val;
+
+            const card = document.getElementById(`card-${subshellId}`);
+            if (card) {
+                if (val > 0) {
+                    card.classList.remove('bg-slate-50', 'border-slate-200');
+                    card.classList.add('bg-blue-50/80', 'border-blue-400');
+                } else {
+                    card.classList.remove('bg-blue-50/80', 'border-blue-400', 'border-emerald-500', 'border-rose-500', 'bg-emerald-50', 'bg-rose-50');
+                    card.classList.add('bg-slate-50', 'border-slate-200');
+                }
+            }
+
+            updateSpectroscopicSummary();
+            hideFeedback();
+        }
+
+        // Calcula el total d'electrons col·locats i actualitza la notació
+        function updateSpectroscopicSummary() {
+            let totalPlaced = 0;
+            let notationParts = [];
+
+            // Seguir l'ordre oficial de Moeller per a la notació
+            SUBSHELLS.forEach(subshell => {
+                const count = userConfiguration[subshell.id] || 0;
+                if (count > 0) {
+                    totalPlaced += count;
+                    // Format Notació Espectroscòpica (ex: 1s²)
+                    const superscript = toSuperscript(count);
+                    notationParts.push(`<span class="inline-block bg-slate-800 text-white px-2 py-0.5 rounded-md">${subshell.name}<sup>${count}</sup></span>`);
+                }
+            });
+
+            document.getElementById('placed-electrons-count').innerText = totalPlaced;
+            const targetElectrons = currentAtom.z;
+            
+            const notationContainer = document.getElementById('spectroscopic-notation');
+            if (notationParts.length === 0) {
+                notationContainer.innerHTML = '<span class="text-slate-500 italic">Comença a introduir electrons al diagrama...</span>';
+            } else {
+                notationContainer.innerHTML = notationParts.join(' ');
+            }
+
+            // Indicador d'estat ràpid
+            const statusIndicator = document.getElementById('status-indicator');
+            if (totalPlaced === targetElectrons) {
+                statusIndicator.innerText = "Completat (Revisa!)";
+                statusIndicator.className = "font-semibold text-blue-600";
+            } else if (totalPlaced > targetElectrons) {
+                statusIndicator.innerText = "Massa electrons!";
+                statusIndicator.className = "font-semibold text-rose-600";
+            } else {
+                statusIndicator.innerText = "Incomplet";
+                statusIndicator.className = "font-semibold text-amber-600";
+            }
+        }
+
+        // Converteix nombres a superíndexs per a text
+        function toSuperscript(num) {
+            const supers = { '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', '10': '¹⁰', '11': '¹¹', '12': '¹²', '13': '¹³', '14': '¹⁴' };
+            return supers[num] || num;
+        }
+
+        // Selecciona un àtom per nombre atòmic Z
+        function selectAtom(z) {
+            const atom = ELEMENTS.find(e => e.z === z);
+            if (!atom) return;
+
+            currentAtom = atom;
+
+            // Actualitzar UI de l'àtom
+            document.getElementById('atom-z-display').innerText = `Z = ${atom.z}`;
+            document.getElementById('atom-symbol').innerText = atom.symbol;
+            document.getElementById('atom-name').innerText = atom.name;
+            document.getElementById('atom-electrons').innerText = atom.z;
+            document.getElementById('total-electrons-target').innerText = atom.z;
+
+            resetDiagram();
+        }
+
+        // Genera àtom aleatori segons dificultat
+        function generateRandomAtom(difficulty) {
+            let min = 1, max = 18;
+            if (difficulty === 'medium') { min = 19; max = 36; }
+            if (difficulty === 'hard') { min = 37; max = 54; }
+
+            const randomZ = Math.floor(Math.random() * (max - min + 1)) + min;
+            selectAtom(randomZ);
+        }
+
+        // Carrega àtom triat per l'alumne
+        function setCustomAtom() {
+            const input = document.getElementById('custom-z-input');
+            const z = parseInt(input.value);
+            if (z >= 1 && z <= 54) {
+                selectAtom(z);
+            } else {
+                showFeedback('warning', 'Si us plau, entra un nombre atòmic Z vàlid entre 1 i 54.');
+            }
+        }
+
+        // Reinicia la configuració de l'alumne
+        function resetDiagram() {
+            SUBSHELLS.forEach(subshell => {
+                updateSubshellValue(subshell.id, 0);
+                
+                // Netejar classes de correcte/incorrecte
+                const card = document.getElementById(`card-${subshell.id}`);
+                if (card) {
+                    card.className = "subshell-card bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 flex flex-col items-center justify-between shadow-xs";
+                }
+            });
+            hideFeedback();
+        }
+
+        // Calcula la solució teòrica segons la regla de Moeller
+        function getTheoreticalConfiguration(z) {
+            let remaining = z;
+            let config = {};
+
+            for (let subshell of SUBSHELLS) {
+                if (remaining <= 0) {
+                    config[subshell.id] = 0;
+                } else {
+                    let fill = Math.min(remaining, subshell.max);
+                    config[subshell.id] = fill;
+                    remaining -= fill;
+                }
+            }
+            return config;
+        }
+
+        // Comprova la configuració de l'estudiant
+        function checkConfiguration() {
+            const correctConfig = getTheoreticalConfiguration(currentAtom.z);
+            let isCorrect = true;
+            let errorsCount = 0;
+            let totalPlaced = 0;
+
+            SUBSHELLS.forEach(subshell => {
+                const userVal = userConfiguration[subshell.id] || 0;
+                const correctVal = correctConfig[subshell.id] || 0;
+                totalPlaced += userVal;
+
+                const card = document.getElementById(`card-${subshell.id}`);
+                if (!card) return;
+
+                // Reset de classes
+                card.classList.remove('bg-emerald-50', 'border-emerald-500', 'bg-rose-50', 'border-rose-500', 'bg-blue-50/80', 'border-blue-400', 'bg-slate-50', 'border-slate-200');
+
+                if (userVal === correctVal) {
+                    if (userVal > 0) {
+                        card.classList.add('bg-emerald-50', 'border-emerald-500');
+                    } else {
+                        card.classList.add('bg-slate-50', 'border-slate-200');
+                    }
+                } else {
+                    isCorrect = false;
+                    errorsCount++;
+                    card.classList.add('bg-rose-50', 'border-rose-500');
+                }
+            });
+
+            if (isCorrect) {
+                showFeedback('success', `<strong>Molt bé! 🎉</strong> La configuració electrònica per a l'àtom de <strong>${currentAtom.name}</strong> (${currentAtom.z} e⁻) és completament correcta.`);
+            } else {
+                if (totalPlaced !== currentAtom.z) {
+                    showFeedback('error', `<strong>Revisa el total d'electrons!</strong> Has col·locat <strong>${totalPlaced}</strong> electrons, però l'àtom de <strong>${currentAtom.name}</strong> en té <strong>${currentAtom.z}</strong>. Les caselles marcades en vermell tenen errors.`);
+                } else {
+                    showFeedback('error', `<strong>L'ordre d'ompliment no és correcte.</strong> El nombre total d'electrons és correcte (${totalPlaced}), però no has après l'ordre del diagrama de Moeller. Revisa les caselles marcades en vermell.`);
+                }
+            }
+        }
+
+        // Mostra la solució completa automàticament
+        function showSolution() {
+            const correctConfig = getTheoreticalConfiguration(currentAtom.z);
+            
+            SUBSHELLS.forEach(subshell => {
+                const correctVal = correctConfig[subshell.id] || 0;
+                updateSubshellValue(subshell.id, correctVal);
+                
+                const card = document.getElementById(`card-${subshell.id}`);
+                if (card) {
+                    card.classList.remove('bg-rose-50', 'border-rose-500', 'bg-slate-50', 'border-slate-200');
+                    if (correctVal > 0) {
+                        card.classList.add('bg-emerald-50', 'border-emerald-500');
+                    }
+                }
+            });
+
+            showFeedback('info', `<strong>Solució carregada:</strong> Aquesta és la configuració electrònica correcta per a l'àtom de <strong>${currentAtom.name}</strong> segons l'ordre d'ompliment de Moeller.`);
+        }
+
+        // Mostra missatges de feedback dinàmics
+        function showFeedback(type, text) {
+            const card = document.getElementById('feedback-card');
+            const icon = document.getElementById('feedback-icon');
+            const textEl = document.getElementById('feedback-text');
+
+            card.classList.remove('hidden', 'bg-emerald-50', 'border-emerald-200', 'text-emerald-800', 'bg-rose-50', 'border-rose-200', 'text-rose-800', 'bg-blue-50', 'border-blue-200', 'text-blue-800', 'bg-amber-50', 'border-amber-200', 'text-amber-800');
+
+            if (type === 'success') {
+                icon.innerHTML = '✅';
+                card.classList.add('bg-emerald-50', 'border-emerald-200', 'text-emerald-800');
+            } else if (type === 'error') {
+                icon.innerHTML = '❌';
+                card.classList.add('bg-rose-50', 'border-rose-200', 'text-rose-800');
+            } else if (type === 'warning') {
+                icon.innerHTML = '⚠️';
+                card.classList.add('bg-amber-50', 'border-amber-200', 'text-amber-800');
+            } else {
+                icon.innerHTML = '💡';
+                card.classList.add('bg-blue-50', 'border-blue-200', 'text-blue-800');
+            }
+
+            textEl.innerHTML = text;
+        }
+
+        // Amaga la targeta de feedback
+        function hideFeedback() {
+            const card = document.getElementById('feedback-card');
+            card.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
