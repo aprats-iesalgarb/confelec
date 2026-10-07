@@ -1,2 +1,2 @@
-# confelec
-Configuració electrònica dels àtoms
+# configuracioelectronica
+Configuració electrònica
